@@ -1,0 +1,60 @@
+{
+  "inputs": [
+    {
+      "name": "password",
+      "public": false,
+      "type": "array",
+      "components": {
+        "size": 2,
+        "type": "field"
+      }
+    },
+    {
+      "name": "transferRequest",
+      "public": true,
+      "type": "struct",
+      "components": {
+        "name": "TransferRequest",
+        "generics": [],
+        "members": [
+          {
+            "name": "owner",
+            "type": "field"
+          },
+          {
+            "name": "receiver",
+            "type": "field"
+          },
+          {
+            "name": "value",
+            "type": "field"
+          },
+          {
+            "name": "deadline",
+            "type": "field"
+          },
+          {
+            "name": "nonce",
+            "type": "field"
+          }
+        ]
+      }
+    },
+    {
+      "name": "userHash",
+      "public": true,
+      "type": "field"
+    },
+    {
+      "name": "compoundHash",
+      "public": true,
+      "type": "field"
+    }
+  ],
+  "output": {
+    "type": "tuple",
+    "components": {
+      "elements": []
+    }
+  }
+}

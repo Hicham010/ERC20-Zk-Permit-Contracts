@@ -1,0 +1,15 @@
+{
+  "name": "1",
+  "version": "1",
+  "chainId": "1",
+  "contractAddress": "1",
+  "password": "1",
+  "salt": "1",
+  "ownerAddress": "1",
+  "spenderAddress": "1",
+  "value": "1",
+  "deadline": "1",
+  "nonce": "1",
+  "userHash": "0x2C0066E10A72ABD2B33C3B214CB3E81BCB1B6E30961CD23C202B18673BF2543",
+  "compoundHash": "0xEA47332B011118ADB5853BB4DCE991758E369C7F5B671256B128DCA4D4E2AE"
+}

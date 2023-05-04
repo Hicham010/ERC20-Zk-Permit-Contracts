@@ -1,0 +1,20 @@
+import "hashes/poseidon/poseidon" as poseidon;
+
+struct TransferRequest {
+    field owner;
+    field receiver;
+    field value;
+    field deadline;
+    field nonce;
+}
+
+def main(private field[2] password, TransferRequest transferRequest, field userHash, field compoundHash) {
+    field userHashed = poseidon([...password, transferRequest.owner]);
+    field transferRequestHash = poseidon([transferRequest.receiver,transferRequest.value,transferRequest.deadline,transferRequest.nonce]);
+    field compoundHashed = poseidon([userHashed,transferRequestHash]);
+
+    assert(userHashed == userHash);
+    assert(compoundHashed == compoundHash);
+
+    return;
+}
