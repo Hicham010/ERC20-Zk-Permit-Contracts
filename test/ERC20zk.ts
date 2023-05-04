@@ -384,6 +384,9 @@ describe("ERC20 Zero-Knowledge Proof", function () {
           );
 
         expect(await ERC20zk.zkNonce(permitZkStruct.owner)).to.eq(1);
+        expect(
+          await ERC20zk.allowance(permitZkStruct.owner, permitZkStruct.spender)
+        ).to.eq(permitZkStruct.value);
       });
 
       it("Should revert using same permit twice (Groth16)", async function () {
