@@ -5,8 +5,6 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {Verifier as GrothVerifier} from "./PermitGroth16Verifier.sol";
 
-// import "hardhat/console.sol";
-
 contract ERC20ZK is ERC20, GrothVerifier {
     uint public constant MAX_FIELD_VALUE =
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
@@ -50,6 +48,11 @@ contract ERC20ZK is ERC20, GrothVerifier {
         GrothProof memory proof,
         PermitZK memory permitZk
     ) external {
+        require(MAX_FIELD_VALUE > permitZk.value, "Value too high");
+        require(MAX_FIELD_VALUE > permitZk.deadline, "deadline too high");
+
+        require(block.timestamp < permitZk.deadline, "Permit expired");
+
         uint[11] memory signalInputs = formaytSignalInputs(permitZk);
 
         bool isVerifierd = GrothVerifier.verifyProof(
@@ -66,9 +69,7 @@ contract ERC20ZK is ERC20, GrothVerifier {
 
     function formaytSignalInputs(
         PermitZK memory permitZk
-    ) internal returns (uint[11] memory) {
-        uint[11] memory signalInputs;
-
+    ) internal returns (uint[11] memory signalInputs) {
         uint nameSignal = nameHex;
         uint versionSignal = versionHex;
 
@@ -103,18 +104,6 @@ contract ERC20ZK is ERC20, GrothVerifier {
 
         signalInputs[9] = userHashSignal;
         signalInputs[10] = compoundHashSignal;
-
-        // console.log("nameSignal: ", signalInputs[0]);
-        // console.log("chainIdSignal: ", signalInputs[1]);
-        // console.log("versionSignal: ", signalInputs[2]);
-        // console.log("contractAddressSignal: ", signalInputs[3]);
-        // console.log("ownerAddressSignal: ", signalInputs[4]);
-        // console.log("spenderAddressSignal: ", signalInputs[5]);
-        // console.log("valueSignal: ", signalInputs[6]);
-        // console.log("deadlineSignal: ", signalInputs[7]);
-        // console.log("nonceSignal: ", signalInputs[8]);
-        // console.log("userHashSignal: ", signalInputs[9]); /
-        // console.log("compoundHashSignal: ", signalInputs[10]);
 
         return signalInputs;
     }
