@@ -4,13 +4,13 @@ import { circuitTest, ethers, snarkjs } from "hardhat";
 const {
   BigNumber,
   utils: { hexZeroPad },
+  constants,
 } = ethers;
 
 import permitDefaultInputs from "../circuits/permit.json";
 import groth16Vkey from "../circuitsOutput/groth16/groth16_vkey.json";
 import plonkVkey from "../circuitsOutput/plonk/plonk_vkey.json";
-import { ERC20ZK, PlonkVerifier } from "../typechain-types";
-// import { Verifier } from "../typechain-types/contracts/ERC20zk.sol/ERC20ZK";
+import { ERC20ZK } from "../typechain-types";
 
 const { buildPoseidon } = require("circomlibjs");
 
@@ -83,7 +83,6 @@ describe("ERC20 Zero-Knowledge Proof", function () {
       poseidon([domainHash, userHash, transferRequestHash])
     );
 
-    // console.log({ userHash }, { compoundHash });
     const permitInput: { [index: string]: any } = {
       ...domainValues,
       ...userValues,
@@ -91,7 +90,6 @@ describe("ERC20 Zero-Knowledge Proof", function () {
       userHash: hexZeroPad(BigNumber.from(userHash).toHexString(), 32),
       compoundHash: hexZeroPad(BigNumber.from(compoundHash).toHexString(), 32),
     };
-    // console.log({ permitInput });
 
     const permitInnerSignal: { [index: string]: any } = {
       domainPosHash: domainHash,
@@ -247,41 +245,6 @@ describe("ERC20 Zero-Knowledge Proof", function () {
           await zkPermitPlonk.verifyProof(proofBytes, publicSignals as any)
         ).to.true;
       });
-
-      // it("Should proof a permit input and verify it (Plonk)", async function () {
-      //   const { owner, spender, ERC20zk, permitInput } = await loadFixture(
-      //     deployILSAZKFixture
-      //   );
-
-      //   const { proof, publicSignals } = await snarkjs.plonk.fullProve(
-      //     permitInput,
-      //     permitWasmPlonk,
-      //     permitZkeyPlonk
-      //   );
-
-      //   await ERC20zk.connect(owner).setUserHash(permitInput.userHash);
-
-      //   const proofBytes =
-      //     (await snarkjs.plonk.exportSolidityCallData(proof, ""))
-      //       .toString()
-      //       .split(",", 1)
-      //       .shift() ?? "";
-
-      //   const permitZkStruct: ERC20ZK.PermitZKStruct = {
-      //     owner: owner.address,
-      //     spender: spender.address,
-      //     value: permitInput.value,
-      //     deadline: permitInput.deadline,
-      //     compoundHash: permitInput.compoundHash,
-      //   };
-
-      //   console.log({ publicSignals });
-      //   console.log({ permitZkStruct });
-      //   console.log({ proofBytes });
-
-      //   expect(await ERC20zk.zkPermitPlonk(proofBytes, permitZkStruct)).to.be
-      //     .ok;
-      // });
 
       it("Should proof a permit input and verify it (Groth16)", async function () {
         const { ERC20zk, permitInput } = await loadFixture(deployILSAZKFixture);
@@ -512,6 +475,129 @@ describe("ERC20 Zero-Knowledge Proof", function () {
         await expect(
           ERC20zk.zkPermitGroth(contractProof, permitZkStruct)
         ).to.be.revertedWith("Proof is invalid");
+      });
+
+      it("Should revert value too high (Groth16)", async function () {
+        const { owner, spender, ERC20zk, permitInput } = await loadFixture(
+          deployILSAZKFixture
+        );
+
+        const { proof } = await snarkjs.groth16.fullProve(
+          permitInput,
+          permitWasmGroth16,
+          permitZkeyGroth16
+        );
+
+        await ERC20zk.connect(owner).setUserHash(permitInput.userHash);
+
+        const proofBytes = (
+          await snarkjs.groth16.exportSolidityCallData(proof, "")
+        )
+          .toString()
+          .split(",[]", 1)
+          .shift();
+
+        const proofContract = JSON.parse(`[${proofBytes}]`);
+
+        const contractProof: ERC20ZK.GrothProofStruct = {
+          A: proofContract[0],
+          B: proofContract[1],
+          C: proofContract[2],
+        };
+
+        const permitZkStruct: ERC20ZK.PermitZKStruct = {
+          owner: owner.address,
+          spender: spender.address,
+          value: constants.MaxUint256,
+          deadline: permitInput.deadline,
+          compoundHash: permitInput.compoundHash,
+        };
+
+        await expect(
+          ERC20zk.zkPermitGroth(contractProof, permitZkStruct)
+        ).to.be.revertedWith("Value too high");
+      });
+
+      it("Should revert compound hash too high (Groth16)", async function () {
+        const { owner, spender, ERC20zk, permitInput } = await loadFixture(
+          deployILSAZKFixture
+        );
+
+        const { proof } = await snarkjs.groth16.fullProve(
+          permitInput,
+          permitWasmGroth16,
+          permitZkeyGroth16
+        );
+
+        await ERC20zk.connect(owner).setUserHash(permitInput.userHash);
+
+        const proofBytes = (
+          await snarkjs.groth16.exportSolidityCallData(proof, "")
+        )
+          .toString()
+          .split(",[]", 1)
+          .shift();
+
+        const proofContract = JSON.parse(`[${proofBytes}]`);
+
+        const contractProof: ERC20ZK.GrothProofStruct = {
+          A: proofContract[0],
+          B: proofContract[1],
+          C: proofContract[2],
+        };
+
+        const permitZkStruct: ERC20ZK.PermitZKStruct = {
+          owner: owner.address,
+          spender: spender.address,
+          value: permitInput.value,
+          deadline: permitInput.deadline,
+          compoundHash: constants.MaxUint256.toHexString(),
+        };
+
+        await expect(
+          ERC20zk.zkPermitGroth(contractProof, permitZkStruct)
+        ).to.be.revertedWith("CompoundHash too high");
+      });
+
+      it("Should revert deadline too high (Groth16)", async function () {
+        const { owner, spender, ERC20zk, permitInput } = await loadFixture(
+          deployILSAZKFixture
+        );
+
+        const { proof } = await snarkjs.groth16.fullProve(
+          permitInput,
+          permitWasmGroth16,
+          permitZkeyGroth16
+        );
+
+        await ERC20zk.connect(owner).setUserHash(permitInput.userHash);
+
+        const proofBytes = (
+          await snarkjs.groth16.exportSolidityCallData(proof, "")
+        )
+          .toString()
+          .split(",[]", 1)
+          .shift();
+
+        const proofContract = JSON.parse(`[${proofBytes}]`);
+
+        const contractProof: ERC20ZK.GrothProofStruct = {
+          A: proofContract[0],
+          B: proofContract[1],
+          C: proofContract[2],
+        };
+
+        const permitZkStruct: ERC20ZK.PermitZKStruct = {
+          owner: owner.address,
+          spender: spender.address,
+          value: permitInput.value,
+          deadline: constants.MaxUint256,
+          compoundHash: permitInput.compoundHash,
+        };
+
+        await expect(
+          ERC20zk.zkPermitGroth(contractProof, permitZkStruct)
+        ).to.be.revertedWith("Deadline too high");
       });
     });
   });

@@ -10,8 +10,8 @@ contract ERC20ZK is ERC20, GrothVerifier {
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
 
     string public constant version = "1";
-    uint public constant nameHex = 0x5a4b2d436f696e; // "ZK-Coin"
-    uint public constant versionHex = 0x31; //  "1"
+    uint public constant nameHex = 0x5a4b2d436f696e; // "ZK-Coin" hex encoded
+    uint public constant versionHex = 0x31; //  "1" hex encoded
 
     struct PermitZK {
         address owner;
@@ -31,7 +31,7 @@ contract ERC20ZK is ERC20, GrothVerifier {
     mapping(address => uint) public zkNonce;
 
     constructor() ERC20("ZK-Coin", "ZK") {
-        _mint(msg.sender, 1_000_00 * 1e18);
+        _mint(msg.sender, 1e6 * 1e18);
     }
 
     function mint(address receiver, uint amount) external {
@@ -49,7 +49,11 @@ contract ERC20ZK is ERC20, GrothVerifier {
         PermitZK memory permitZk
     ) external {
         require(MAX_FIELD_VALUE > permitZk.value, "Value too high");
-        require(MAX_FIELD_VALUE > permitZk.deadline, "deadline too high");
+        require(MAX_FIELD_VALUE > permitZk.deadline, "Deadline too high");
+        require(
+            MAX_FIELD_VALUE > uint256(permitZk.compoundHash),
+            "CompoundHash too high"
+        );
 
         require(block.timestamp < permitZk.deadline, "Permit expired");
 
