@@ -97,14 +97,8 @@ contract ERC20ZK is ERC20, GrothVerifier {
         signalInputs[7] = deadlineSignal;
         signalInputs[8] = nonceSignal;
 
-        uint userHashSignal = abi.decode(
-            abi.encode(userHash[permitZk.owner]),
-            (uint)
-        );
-        uint compoundHashSignal = abi.decode(
-            abi.encode(permitZk.compoundHash),
-            (uint)
-        );
+        uint userHashSignal = uint256(userHash[permitZk.owner]);
+        uint compoundHashSignal = uint256(permitZk.compoundHash);
 
         signalInputs[9] = userHashSignal;
         signalInputs[10] = compoundHashSignal;
