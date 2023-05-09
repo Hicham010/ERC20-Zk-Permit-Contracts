@@ -15,8 +15,14 @@ jobs:
       - name: Checks out Branch
         uses: actions/checkout@v3
 
+      - name: Install Circom
+        run: npm install -g circom
+
       - name: Install Hardhat
         run: npm install
+
+      - name: Compile circuits
+        run: npx hardhat cicrom --verbose
 
       - name: Run tests
         run: npx hardhat test
