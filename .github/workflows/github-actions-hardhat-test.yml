@@ -1,0 +1,22 @@
+on: [push]
+
+name: test
+
+jobs:
+  check:
+    name: Hardhat project
+    runs-on: ubuntu-latest
+    env:
+      MNEMONIC: "test test test test test test test test test test test junk"
+      ETHERSCAN_API_KEY: ""
+      ALCHEMY_API_URL_SEPOLIA: ""
+      COIN_MCAP_API_KEY: ""
+    steps:
+      - name: Checks out Branch
+        uses: actions/checkout@v3
+
+      - name: Install Hardhat
+        run: npm install
+
+      - name: Run tests
+        run: npx hardhat test
