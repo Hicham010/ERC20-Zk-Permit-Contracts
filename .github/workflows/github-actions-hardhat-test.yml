@@ -4,7 +4,7 @@ name: test
 
 jobs:
   check:
-    name: Foundry project
+    name: Hardhat project
     runs-on: ubuntu-latest
     env:
       MNEMONIC: "test test test test test test test test test test test junk"
