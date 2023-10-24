@@ -2,44 +2,43 @@
 pragma solidity ^0.8.0;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {Verifier as GrothVerifier} from "./PermitGroth16Verifier.sol";
 
 contract ERC20ZK is ERC20, GrothVerifier {
-    uint public constant MAX_FIELD_VALUE =
+    uint256 public constant MAX_FIELD_VALUE =
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
 
     string public constant version = "1";
-    uint public constant nameHex = 0x5a4b2d436f696e; // "ZK-Coin" hex encoded
-    uint public constant versionHex = 0x31; //  "1" hex encoded
+    uint256 public constant nameHex = uint56(bytes7("ZK-Coin"));
+    uint256 public constant versionHex = uint8(bytes1("1"));
 
     struct PermitZK {
         address owner;
         address spender;
-        uint value;
-        uint deadline;
+        uint256 value;
+        uint256 deadline;
         bytes32 compoundHash;
     }
 
     struct GrothProof {
-        uint[2] A;
-        uint[2][2] B;
-        uint[2] C;
+        uint256[2] A;
+        uint256[2][2] B;
+        uint256[2] C;
     }
 
     mapping(address => bytes32) public userHash;
-    mapping(address => uint) public zkNonce;
+    mapping(address => uint256) public zkNonce;
 
     constructor() ERC20("ZK-Coin", "ZK") {
         _mint(msg.sender, 1e6 * 1e18);
     }
 
-    function mint(address receiver, uint amount) external {
+    function mint(address receiver, uint256 amount) external {
         _mint(receiver, amount * 1e18);
     }
 
     function setUserHash(bytes32 _userHash) external {
-        require(MAX_FIELD_VALUE > uint(_userHash), "Userhash not allowed");
+        require(MAX_FIELD_VALUE > uint256(_userHash), "Userhash not allowed");
 
         userHash[msg.sender] = _userHash;
     }
@@ -57,7 +56,7 @@ contract ERC20ZK is ERC20, GrothVerifier {
 
         require(block.timestamp < permitZk.deadline, "Permit expired");
 
-        uint[11] memory signalInputs = formaytSignalInputs(permitZk);
+        uint256[11] memory signalInputs = formaytSignalInputs(permitZk);
 
         bool isVerifierd = GrothVerifier.verifyProof(
             proof.A,
@@ -73,23 +72,23 @@ contract ERC20ZK is ERC20, GrothVerifier {
 
     function formaytSignalInputs(
         PermitZK memory permitZk
-    ) internal returns (uint[11] memory signalInputs) {
-        uint nameSignal = nameHex;
-        uint versionSignal = versionHex;
+    ) internal returns (uint256[11] memory signalInputs) {
+        uint256 nameSignal = nameHex;
+        uint256 versionSignal = versionHex;
 
-        uint chainIdSignal = block.chainid;
-        uint contractAddressSignal = uint(uint160(address(this)));
+        uint256 chainIdSignal = block.chainid;
+        uint256 contractAddressSignal = uint256(uint160(address(this)));
 
         signalInputs[0] = nameSignal;
         signalInputs[1] = versionSignal;
         signalInputs[2] = chainIdSignal;
         signalInputs[3] = contractAddressSignal;
 
-        uint ownerAddressSignal = uint(uint160(permitZk.owner));
-        uint spenderAddressSignal = uint(uint160(permitZk.spender));
-        uint valueSignal = permitZk.value;
-        uint deadlineSignal = permitZk.deadline;
-        uint nonceSignal = zkNonce[permitZk.owner]++; //Increment nonce to prevent replay attack
+        uint256 ownerAddressSignal = uint256(uint160(permitZk.owner));
+        uint256 spenderAddressSignal = uint256(uint160(permitZk.spender));
+        uint256 valueSignal = permitZk.value;
+        uint256 deadlineSignal = permitZk.deadline;
+        uint256 nonceSignal = zkNonce[permitZk.owner]++; //Increment nonce to prevent replay attack
 
         signalInputs[4] = ownerAddressSignal;
         signalInputs[5] = spenderAddressSignal;
@@ -97,8 +96,8 @@ contract ERC20ZK is ERC20, GrothVerifier {
         signalInputs[7] = deadlineSignal;
         signalInputs[8] = nonceSignal;
 
-        uint userHashSignal = uint256(userHash[permitZk.owner]);
-        uint compoundHashSignal = uint256(permitZk.compoundHash);
+        uint256 userHashSignal = uint256(userHash[permitZk.owner]);
+        uint256 compoundHashSignal = uint256(permitZk.compoundHash);
 
         signalInputs[9] = userHashSignal;
         signalInputs[10] = compoundHashSignal;
