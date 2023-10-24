@@ -1,6 +1,6 @@
-import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "hardhat-circom";
+import { HardhatUserConfig } from "hardhat/config";
 
 import * as dotenv from "dotenv";
 
@@ -61,9 +61,12 @@ const config: HardhatUserConfig = {
     },
   },
   gasReporter: {
-    enabled: false,
+    enabled: true,
     coinmarketcap: process.env.COIN_MCAP_API_KEY, //API KEY unprotected
     currency: "EUR",
+    showTimeSpent: true,
+    outputFile: "gas-report.txt",
+    noColors: true,
   },
 };
 
