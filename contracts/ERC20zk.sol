@@ -8,7 +8,6 @@ contract ERC20ZK is ERC20, GrothVerifier {
     uint256 public constant MAX_FIELD_VALUE =
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
 
-    string public constant version = "1";
     uint256 public constant nameHex = uint56(bytes7("ZK-Coin"));
     uint256 public constant versionHex = uint8(bytes1("1"));
 
@@ -56,7 +55,7 @@ contract ERC20ZK is ERC20, GrothVerifier {
 
         require(block.timestamp < permitZk.deadline, "Permit expired");
 
-        uint256[11] memory signalInputs = formaytSignalInputs(permitZk);
+        uint256[11] memory signalInputs = formatSignalInputs(permitZk);
 
         bool isVerifierd = GrothVerifier.verifyProof(
             proof.A,
@@ -70,38 +69,21 @@ contract ERC20ZK is ERC20, GrothVerifier {
         _approve(permitZk.owner, permitZk.spender, permitZk.value);
     }
 
-    function formaytSignalInputs(
+    function formatSignalInputs(
         PermitZK memory permitZk
     ) internal returns (uint256[11] memory signalInputs) {
-        uint256 nameSignal = nameHex;
-        uint256 versionSignal = versionHex;
+        signalInputs[0] = nameHex;
+        signalInputs[1] = versionHex;
+        signalInputs[2] = block.chainid;
+        signalInputs[3] = uint256(uint160(address(this)));
 
-        uint256 chainIdSignal = block.chainid;
-        uint256 contractAddressSignal = uint256(uint160(address(this)));
+        signalInputs[4] = uint256(uint160(permitZk.owner));
+        signalInputs[5] = uint256(uint160(permitZk.spender));
+        signalInputs[6] = permitZk.value;
+        signalInputs[7] = permitZk.deadline;
+        signalInputs[8] = zkNonce[permitZk.owner]++; //Increment nonce to prevent replay attack
 
-        signalInputs[0] = nameSignal;
-        signalInputs[1] = versionSignal;
-        signalInputs[2] = chainIdSignal;
-        signalInputs[3] = contractAddressSignal;
-
-        uint256 ownerAddressSignal = uint256(uint160(permitZk.owner));
-        uint256 spenderAddressSignal = uint256(uint160(permitZk.spender));
-        uint256 valueSignal = permitZk.value;
-        uint256 deadlineSignal = permitZk.deadline;
-        uint256 nonceSignal = zkNonce[permitZk.owner]++; //Increment nonce to prevent replay attack
-
-        signalInputs[4] = ownerAddressSignal;
-        signalInputs[5] = spenderAddressSignal;
-        signalInputs[6] = valueSignal;
-        signalInputs[7] = deadlineSignal;
-        signalInputs[8] = nonceSignal;
-
-        uint256 userHashSignal = uint256(userHash[permitZk.owner]);
-        uint256 compoundHashSignal = uint256(permitZk.compoundHash);
-
-        signalInputs[9] = userHashSignal;
-        signalInputs[10] = compoundHashSignal;
-
-        return signalInputs;
+        signalInputs[9] = uint256(userHash[permitZk.owner]);
+        signalInputs[10] = uint256(permitZk.compoundHash);
     }
 }
