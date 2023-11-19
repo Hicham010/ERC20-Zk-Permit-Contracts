@@ -7,12 +7,18 @@ const {
   constants,
 } = ethers;
 
-import permitDefaultInputs from "../circuits/permit.json";
+type GrothProof = [
+  a: ERC20ZK.GrothProofStruct["A"],
+  b: ERC20ZK.GrothProofStruct["B"],
+  c: ERC20ZK.GrothProofStruct["C"]
+];
+
+// import permitDefaultInputs from "../circuits/permit.json";
 import groth16Vkey from "../circuitsOutput/groth16/groth16_vkey.json";
 import plonkVkey from "../circuitsOutput/plonk/plonk_vkey.json";
 import { ERC20ZK } from "../typechain-types";
 
-const { buildPoseidon } = require("circomlibjs");
+import { buildPoseidon } from "circomlibjs";
 
 const permitWasmPlonk = "./circuitsOutput/plonk/plonk.wasm";
 const permitZkeyPlonk = "./circuitsOutput/plonk/plonk.zkey";
@@ -25,7 +31,7 @@ const MAX_FIELD_SIZE = BigNumber.from(
 );
 
 describe("ERC20 Zero-Knowledge Proof", function () {
-  async function deployILSAZKFixture() {
+  async function deployERC20ZKFixture() {
     // Contracts are deployed using the first signer/account by default
     const [owner, spender, ...otherAccount] = await ethers.getSigners();
 
@@ -46,7 +52,6 @@ describe("ERC20 Zero-Knowledge Proof", function () {
       chainId: (await owner.getChainId()).toString(),
       contractAddress: ERC20zk.address,
     };
-
     const userValues = {
       password: hexZeroPad("0x" + Buffer.from("password").toString("hex"), 32),
       salt: hexZeroPad("0x" + Buffer.from("salt").toString("hex"), 32),
@@ -83,7 +88,7 @@ describe("ERC20 Zero-Knowledge Proof", function () {
       poseidon([domainHash, userHash, transferRequestHash])
     );
 
-    const permitInput: { [index: string]: any } = {
+    const permitInput = {
       ...domainValues,
       ...userValues,
       ...transferRequestValues,
@@ -91,7 +96,7 @@ describe("ERC20 Zero-Knowledge Proof", function () {
       compoundHash: hexZeroPad(BigNumber.from(compoundHash).toHexString(), 32),
     };
 
-    const permitInnerSignal: { [index: string]: any } = {
+    const permitInnerSignal = {
       domainPosHash: domainHash,
       userPosHash: undefined, // Get's removed in final output (optimization?)
       transferRequestPosHash: transferRequestHash,
@@ -116,7 +121,7 @@ describe("ERC20 Zero-Knowledge Proof", function () {
     describe("Checking permit circuit", function () {
       it("Checking the compilation of permit circuit (Plonk)", async function () {
         const { circuitPlonk, permitInput } = await loadFixture(
-          deployILSAZKFixture
+          deployERC20ZKFixture
         );
 
         const witnessPlonk = await circuitPlonk.calculateWitness(
@@ -128,7 +133,7 @@ describe("ERC20 Zero-Knowledge Proof", function () {
 
       it("Checking the compilation of permit circuit (Groth16)", async function () {
         const { circuitGroth16, permitInput } = await loadFixture(
-          deployILSAZKFixture
+          deployERC20ZKFixture
         );
 
         const witnessGroth16 = await circuitGroth16.calculateWitness(
@@ -140,7 +145,7 @@ describe("ERC20 Zero-Knowledge Proof", function () {
 
       it("Checking the inputs of permit circuit (Groth16)", async function () {
         const { circuitGroth16, permitInput } = await loadFixture(
-          deployILSAZKFixture
+          deployERC20ZKFixture
         );
 
         const witnessGroth16 = await circuitGroth16.calculateLabeledWitness(
@@ -153,14 +158,16 @@ describe("ERC20 Zero-Knowledge Proof", function () {
           // console.log(witnessGroth16[`main.${key}`]);
 
           expect(witnessGroth16[`main.${key}`]).to.eq(
-            BigNumber.from(permitInput[key]).toString()
+            BigNumber.from(
+              permitInput[key as keyof typeof permitInput]
+            ).toString()
           );
         }
       });
 
       it("Checking the inner signal of permit circuit (Groth16)", async function () {
         const { circuitGroth16, permitInput, permitInnerSignal } =
-          await loadFixture(deployILSAZKFixture);
+          await loadFixture(deployERC20ZKFixture);
         const witnessGroth16 = await circuitGroth16.calculateLabeledWitness(
           permitInput,
           true
@@ -170,13 +177,15 @@ describe("ERC20 Zero-Knowledge Proof", function () {
         for (const key of PermitInnerkeys) {
           // console.log(key, witnessGroth16[`main.${key}`]);
 
-          expect(witnessGroth16[`main.${key}`]).to.eq(permitInnerSignal[key]);
+          expect(witnessGroth16[`main.${key}`]).to.eq(
+            permitInnerSignal[key as keyof typeof permitInnerSignal]
+          );
         }
       });
 
       it("Checking the inputs of permit circuit (Plonk)", async function () {
         const { circuitPlonk, permitInput } = await loadFixture(
-          deployILSAZKFixture
+          deployERC20ZKFixture
         );
 
         const witnessGroth16 = await circuitPlonk.calculateLabeledWitness(
@@ -185,19 +194,20 @@ describe("ERC20 Zero-Knowledge Proof", function () {
         );
         // console.log(Object.keys(permitInput));
         const Permitkeys = Object.keys(permitInput);
-
         for (const key of Permitkeys) {
           // console.log(witnessGroth16[`main.${key}`]);
 
           expect(witnessGroth16[`main.${key}`]).to.eq(
-            BigNumber.from(permitInput[key]).toString()
+            BigNumber.from(
+              permitInput[key as keyof typeof permitInput]
+            ).toString()
           );
         }
       });
 
       it("Checking the output of permit circuit (Plonk)", async function () {
         const { circuitPlonk, permitInput } = await loadFixture(
-          deployILSAZKFixture
+          deployERC20ZKFixture
         );
 
         const witnessGroth16 = await circuitPlonk.calculateWitness(
@@ -209,7 +219,7 @@ describe("ERC20 Zero-Knowledge Proof", function () {
 
       it("Checking the output of permit circuit (Groth16)", async function () {
         const { circuitGroth16, permitInput } = await loadFixture(
-          deployILSAZKFixture
+          deployERC20ZKFixture
         );
 
         const witnessGroth16 = await circuitGroth16.calculateWitness(
@@ -221,9 +231,59 @@ describe("ERC20 Zero-Knowledge Proof", function () {
     });
 
     describe("Checking deployed contract", function () {
+      async function ERC20ZKWithGrothProofFixture() {
+        const {
+          zkPermitPlonk,
+          ERC20zk,
+          owner,
+          spender,
+          otherAccount,
+          circuitPlonk,
+          circuitGroth16,
+          permitInput,
+          permitInnerSignal,
+          poseidon,
+        } = await loadFixture(deployERC20ZKFixture);
+
+        const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+          permitInput,
+          permitWasmGroth16,
+          permitZkeyGroth16
+        );
+
+        await ERC20zk.connect(owner).setUserHash(permitInput.userHash);
+
+        const proofBytes = (
+          await snarkjs.groth16.exportSolidityCallData(proof, "")
+        )
+          .split(",[]", 1)
+          .shift();
+
+        const proofContract: GrothProof = JSON.parse(`[${proofBytes}]`);
+        const [A, B, C] = proofContract;
+        const contractProof: ERC20ZK.GrothProofStruct = { A, B, C };
+
+        return {
+          zkPermitPlonk,
+          ERC20zk,
+          owner,
+          spender,
+          otherAccount,
+          circuitPlonk,
+          circuitGroth16,
+          permitInput,
+          permitInnerSignal,
+          poseidon,
+          proof,
+          publicSignals,
+          proofBytes,
+          contractProof,
+        };
+      }
+
       it("Should proof a permit input and verify it (Plonk)", async function () {
         const { zkPermitPlonk, permitInput } = await loadFixture(
-          deployILSAZKFixture
+          deployERC20ZKFixture
         );
 
         const { proof, publicSignals } = await snarkjs.plonk.fullProve(
@@ -234,7 +294,6 @@ describe("ERC20 Zero-Knowledge Proof", function () {
 
         const proofBytes =
           (await snarkjs.plonk.exportSolidityCallData(proof, ""))
-            .toString()
             .split(",", 1)
             .shift() ?? "";
 
@@ -242,17 +301,13 @@ describe("ERC20 Zero-Knowledge Proof", function () {
 
         expect(res).to.true;
         expect(
-          await zkPermitPlonk.verifyProof(proofBytes, publicSignals as any)
+          await zkPermitPlonk.verifyProof(proofBytes, publicSignals as bigint[])
         ).to.true;
       });
 
       it("Should proof a permit input and verify it (Groth16)", async function () {
-        const { ERC20zk, permitInput } = await loadFixture(deployILSAZKFixture);
-
-        const { proof, publicSignals } = await snarkjs.groth16.fullProve(
-          permitInput,
-          permitWasmGroth16,
-          permitZkeyGroth16
+        const { ERC20zk, publicSignals, proof, proofBytes } = await loadFixture(
+          ERC20ZKWithGrothProofFixture
         );
 
         const res = await snarkjs.groth16.verify(
@@ -263,19 +318,7 @@ describe("ERC20 Zero-Knowledge Proof", function () {
 
         expect(res).to.true;
 
-        const proofBytes = (
-          await snarkjs.groth16.exportSolidityCallData(proof, "")
-        )
-          .toString()
-          .split(",[]", 1)
-          .shift();
-
-        const proofContract: [
-          [string, string],
-          [[string, string], [string, string]],
-          [string, string]
-        ] = JSON.parse(`[${proofBytes}]`);
-
+        const proofContract: GrothProof = JSON.parse(`[${proofBytes}]`);
         // const proofContract: [
         //   [string, string],
         //   [[string, string], [string, string]],
@@ -298,37 +341,13 @@ describe("ERC20 Zero-Knowledge Proof", function () {
         // ];
 
         expect(
-          await ERC20zk.verifyProof(...proofContract, publicSignals as any)
+          await ERC20zk.verifyProof(...proofContract, publicSignals as bigint[])
         ).to.true;
       });
 
       it("Should execute zkPermitGroth (Groth16)", async function () {
-        const { owner, spender, ERC20zk, permitInput } = await loadFixture(
-          deployILSAZKFixture
-        );
-
-        const { proof } = await snarkjs.groth16.fullProve(
-          permitInput,
-          permitWasmGroth16,
-          permitZkeyGroth16
-        );
-
-        await ERC20zk.connect(owner).setUserHash(permitInput.userHash);
-
-        const proofBytes = (
-          await snarkjs.groth16.exportSolidityCallData(proof, "")
-        )
-          .toString()
-          .split(",[]", 1)
-          .shift();
-
-        const proofContract = JSON.parse(`[${proofBytes}]`);
-
-        const contractProof: ERC20ZK.GrothProofStruct = {
-          A: proofContract[0],
-          B: proofContract[1],
-          C: proofContract[2],
-        };
+        const { owner, spender, ERC20zk, permitInput, contractProof } =
+          await loadFixture(ERC20ZKWithGrothProofFixture);
 
         const permitZkStruct: ERC20ZK.PermitZKStruct = {
           owner: owner.address,
@@ -353,32 +372,8 @@ describe("ERC20 Zero-Knowledge Proof", function () {
       });
 
       it("Should revert using same permit twice (Groth16)", async function () {
-        const { owner, spender, ERC20zk, permitInput } = await loadFixture(
-          deployILSAZKFixture
-        );
-
-        const { proof } = await snarkjs.groth16.fullProve(
-          permitInput,
-          permitWasmGroth16,
-          permitZkeyGroth16
-        );
-
-        await ERC20zk.connect(owner).setUserHash(permitInput.userHash);
-
-        const proofBytes = (
-          await snarkjs.groth16.exportSolidityCallData(proof, "")
-        )
-          .toString()
-          .split(",[]", 1)
-          .shift();
-
-        const proofContract = JSON.parse(`[${proofBytes}]`);
-
-        const contractProof: ERC20ZK.GrothProofStruct = {
-          A: proofContract[0],
-          B: proofContract[1],
-          C: proofContract[2],
-        };
+        const { owner, spender, ERC20zk, permitInput, contractProof } =
+          await loadFixture(ERC20ZKWithGrothProofFixture);
 
         const permitZkStruct: ERC20ZK.PermitZKStruct = {
           owner: owner.address,
@@ -396,32 +391,8 @@ describe("ERC20 Zero-Knowledge Proof", function () {
       });
 
       it("Should revert permit expired (Groth16)", async function () {
-        const { owner, spender, ERC20zk, permitInput } = await loadFixture(
-          deployILSAZKFixture
-        );
-
-        const { proof } = await snarkjs.groth16.fullProve(
-          permitInput,
-          permitWasmGroth16,
-          permitZkeyGroth16
-        );
-
-        await ERC20zk.connect(owner).setUserHash(permitInput.userHash);
-
-        const proofBytes = (
-          await snarkjs.groth16.exportSolidityCallData(proof, "")
-        )
-          .toString()
-          .split(",[]", 1)
-          .shift();
-
-        const proofContract = JSON.parse(`[${proofBytes}]`);
-
-        const contractProof: ERC20ZK.GrothProofStruct = {
-          A: proofContract[0],
-          B: proofContract[1],
-          C: proofContract[2],
-        };
+        const { owner, spender, ERC20zk, permitInput, contractProof } =
+          await loadFixture(ERC20ZKWithGrothProofFixture);
 
         const permitZkStruct: ERC20ZK.PermitZKStruct = {
           owner: owner.address,
@@ -437,37 +408,13 @@ describe("ERC20 Zero-Knowledge Proof", function () {
       });
 
       it("Should revert value changed (Groth16)", async function () {
-        const { owner, spender, ERC20zk, permitInput } = await loadFixture(
-          deployILSAZKFixture
-        );
-
-        const { proof } = await snarkjs.groth16.fullProve(
-          permitInput,
-          permitWasmGroth16,
-          permitZkeyGroth16
-        );
-
-        await ERC20zk.connect(owner).setUserHash(permitInput.userHash);
-
-        const proofBytes = (
-          await snarkjs.groth16.exportSolidityCallData(proof, "")
-        )
-          .toString()
-          .split(",[]", 1)
-          .shift();
-
-        const proofContract = JSON.parse(`[${proofBytes}]`);
-
-        const contractProof: ERC20ZK.GrothProofStruct = {
-          A: proofContract[0],
-          B: proofContract[1],
-          C: proofContract[2],
-        };
+        const { owner, spender, ERC20zk, permitInput, contractProof } =
+          await loadFixture(ERC20ZKWithGrothProofFixture);
 
         const permitZkStruct: ERC20ZK.PermitZKStruct = {
           owner: owner.address,
           spender: spender.address,
-          value: permitInput.value + "100",
+          value: (parseInt(permitInput.value) + 999).toString(),
           deadline: permitInput.deadline,
           compoundHash: permitInput.compoundHash,
         };
@@ -478,32 +425,8 @@ describe("ERC20 Zero-Knowledge Proof", function () {
       });
 
       it("Should revert value too high (Groth16)", async function () {
-        const { owner, spender, ERC20zk, permitInput } = await loadFixture(
-          deployILSAZKFixture
-        );
-
-        const { proof } = await snarkjs.groth16.fullProve(
-          permitInput,
-          permitWasmGroth16,
-          permitZkeyGroth16
-        );
-
-        await ERC20zk.connect(owner).setUserHash(permitInput.userHash);
-
-        const proofBytes = (
-          await snarkjs.groth16.exportSolidityCallData(proof, "")
-        )
-          .toString()
-          .split(",[]", 1)
-          .shift();
-
-        const proofContract = JSON.parse(`[${proofBytes}]`);
-
-        const contractProof: ERC20ZK.GrothProofStruct = {
-          A: proofContract[0],
-          B: proofContract[1],
-          C: proofContract[2],
-        };
+        const { owner, spender, ERC20zk, permitInput, contractProof } =
+          await loadFixture(ERC20ZKWithGrothProofFixture);
 
         const permitZkStruct: ERC20ZK.PermitZKStruct = {
           owner: owner.address,
@@ -519,32 +442,8 @@ describe("ERC20 Zero-Knowledge Proof", function () {
       });
 
       it("Should revert compound hash too high (Groth16)", async function () {
-        const { owner, spender, ERC20zk, permitInput } = await loadFixture(
-          deployILSAZKFixture
-        );
-
-        const { proof } = await snarkjs.groth16.fullProve(
-          permitInput,
-          permitWasmGroth16,
-          permitZkeyGroth16
-        );
-
-        await ERC20zk.connect(owner).setUserHash(permitInput.userHash);
-
-        const proofBytes = (
-          await snarkjs.groth16.exportSolidityCallData(proof, "")
-        )
-          .toString()
-          .split(",[]", 1)
-          .shift();
-
-        const proofContract = JSON.parse(`[${proofBytes}]`);
-
-        const contractProof: ERC20ZK.GrothProofStruct = {
-          A: proofContract[0],
-          B: proofContract[1],
-          C: proofContract[2],
-        };
+        const { owner, spender, ERC20zk, permitInput, contractProof } =
+          await loadFixture(ERC20ZKWithGrothProofFixture);
 
         const permitZkStruct: ERC20ZK.PermitZKStruct = {
           owner: owner.address,
@@ -560,32 +459,8 @@ describe("ERC20 Zero-Knowledge Proof", function () {
       });
 
       it("Should revert deadline too high (Groth16)", async function () {
-        const { owner, spender, ERC20zk, permitInput } = await loadFixture(
-          deployILSAZKFixture
-        );
-
-        const { proof } = await snarkjs.groth16.fullProve(
-          permitInput,
-          permitWasmGroth16,
-          permitZkeyGroth16
-        );
-
-        await ERC20zk.connect(owner).setUserHash(permitInput.userHash);
-
-        const proofBytes = (
-          await snarkjs.groth16.exportSolidityCallData(proof, "")
-        )
-          .toString()
-          .split(",[]", 1)
-          .shift();
-
-        const proofContract = JSON.parse(`[${proofBytes}]`);
-
-        const contractProof: ERC20ZK.GrothProofStruct = {
-          A: proofContract[0],
-          B: proofContract[1],
-          C: proofContract[2],
-        };
+        const { owner, spender, ERC20zk, permitInput, contractProof } =
+          await loadFixture(ERC20ZKWithGrothProofFixture);
 
         const permitZkStruct: ERC20ZK.PermitZKStruct = {
           owner: owner.address,
