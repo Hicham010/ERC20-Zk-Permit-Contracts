@@ -119,7 +119,7 @@ describe("ERC20 Zero-Knowledge Proof", function () {
 
   describe("Deployment", function () {
     describe("Checking permit circuit", function () {
-      it("Checking the compilation of permit circuit (Plonk)", async function () {
+      it("Checking the compilation of permit circuit (Plonk) ", async function () {
         const { circuitPlonk, permitInput } = await loadFixture(
           deployERC20ZKFixture
         );
